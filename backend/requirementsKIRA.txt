@@ -7,5 +7,6 @@ pydantic
 python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
-# Bcrypt versiyasını sabit saxla ki, passlib ilə uyğunsuzluq yaranmasın.
+# Bcrypt versiyasını sabit saxla ki, passlib ilə uyğunsuzluq və
+# \"password cannot be longer than 72 bytes\" xətası yaranmasın.
 bcrypt==4.1.2

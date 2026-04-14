@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
 
 export interface LoginResponse {
   access_token: string;
@@ -36,25 +36,38 @@ function getAuthHeaders(token: string | null) {
   return headers;
 }
 
+function parseDetail(detail: unknown): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
+  return 'Daxil olmaq alınmadı';
+}
+
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const body = new URLSearchParams();
   body.append('username', username);
   body.append('password', password);
 
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || 'Daxil olmaq alınmadı');
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    });
+  } catch (e) {
+    const msg = e instanceof TypeError ? 'Backendə qoşula bilinmədi. Serverin (port 8001) işlədiyini yoxlayın.' : String(e);
+    throw new Error(msg);
   }
 
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = res.status === 401 ? (parseDetail(data.detail) || 'İstifadəçi adı və ya şifrə səhvdir') : parseDetail(data.detail);
+    throw new Error(message);
+  }
+
+  return data as LoginResponse;
 }
 
 export async function fetchMe(token: string): Promise<User> {

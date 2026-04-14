@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { isAdminRole, roleLabel } from './lib/roles';
 import { Navbar } from './components/Navbar';
 import { DocumentForm } from './components/DocumentForm';
 import { DocumentTable } from './components/DocumentTable';
@@ -295,6 +296,7 @@ function App() {
       setToken(res.access_token);
       const me = await fetchMe(res.access_token);
       setCurrentUser(me);
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       setAuthError(err.message || 'Daxil olmaq alınmadı');
     } finally {
@@ -302,12 +304,23 @@ function App() {
     }
   }
 
-  // URL-i view ilə sinxron saxla
+  // Girişsiz: yalnız /login; girişli: /, /login → /dashboard
   useEffect(() => {
-    if (location.pathname === '/') {
+    if (authLoading) return;
+
+    const path = location.pathname;
+
+    if (!token || !currentUser) {
+      if (path !== '/login') {
+        navigate('/login', { replace: true });
+      }
+      return;
+    }
+
+    if (path === '/' || path === '/login') {
       navigate('/dashboard', { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [authLoading, token, currentUser, location.pathname, navigate]);
 
   const view: ViewKey =
     location.pathname.startsWith('/documents')
@@ -335,9 +348,10 @@ function App() {
     setDocuments([]);
     setPriorityIds([]);
     setProtocols([]);
+    navigate('/login', { replace: true });
   }
 
-if (!token || !currentUser) {
+  if (!token || !currentUser) {
     if (authLoading) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -427,11 +441,11 @@ if (!token || !currentUser) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-slate-100 flex">
       <Sidebar
         active={view}
         onChange={(key) => handleChangeView(key as ViewKey)}
-        isAdmin={currentUser.role === 'admin'}
+        isAdmin={isAdminRole(currentUser.role)}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
@@ -439,7 +453,7 @@ if (!token || !currentUser) {
       <div className="flex-1 flex flex-col">
         <Navbar onNewDocument={handleNewDocument} />
 
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-sm font-medium text-gray-900">
               {view === 'dashboard'
@@ -506,7 +520,7 @@ if (!token || !currentUser) {
                     {currentUser.full_name || currentUser.username}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Rol: {currentUser.role === 'admin' ? 'Admin' : 'İstifadəçi'}
+                    Rol: {roleLabel(currentUser.role)}
                   </p>
                 </div>
 
@@ -867,7 +881,7 @@ if (!token || !currentUser) {
             </>
           )}
 
-          {view === 'users' && currentUser.role === 'admin' && token && (
+          {view === 'users' && isAdminRole(currentUser.role) && token && (
             <UserTable token={token} />
           )}
         </main>

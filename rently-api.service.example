@@ -1,0 +1,44 @@
+# Kopyala: sudo cp rently-api.service.example /etc/systemd/system/kira-backend.service
+# Layihə kökü bu nümunədə: /var/www/KIRA (screen-dəki KIRA serveri). Başqa yol olsa yalnız bu yolları dəyiş.
+#
+# "No module named 'backend'" — adətən:
+#   • WorkingDirectory səhvdir: .../backend olmamalı; LAYIHA_KÖK olmalıdır (içində backend/ alt qovluğu).
+#   • PYTHONPATH LAYIHA_KÖK deyil (boş və ya başqa yol).
+#   • Serverdə struktur belə olmalıdır:
+#       LAYIHA_KÖK/backend/__init__.py
+#       LAYIHA_KÖK/backend/main.py
+#     Əgər faylları birbaşa LAYIHA_KÖK/ altına atıbsınızsa (backend/ qovluğu yoxdursa), backend modulu olmur.
+#   • Linux-da qovluq adı böyük hərflə olmamalı: backend ≠ Backend.
+#
+# Yoxlama (LAYIHA_KÖK = /var/www/KIRA):
+#   cd /var/www/KIRA && PYTHONPATH=/var/www/KIRA python3 -c "import backend.main; print('OK')"
+#
+# Alternativ: layihə kökündə ./run-api.sh (PYTHONPATH özü təyin olunur), systemd-də:
+#   ExecStart=/var/www/KIRA/run-api.sh
+#
+# Sonra: sudo systemctl daemon-reload && sudo systemctl restart kira-backend
+#
+# Köhnə/sadə sətir (sənin nümunənə yaxın) — düzəlişlər:
+#   • /usr/bin/python yox, /usr/bin/python3 (Ubuntu-da "python" bəzən yoxdur və ya Py2-dir).
+#   • --reload production-da systemd ilə istifadə etmə (əlavə proses, restart təhlükəsi).
+#   • Bu işləsin deyə [Service]-də WorkingDirectory=LAYIHA_KÖK və Environment=PYTHONPATH=LAYIHA_KÖK olmalıdır.
+# Sadə ExecStart nümunəsi:
+#   ExecStart=/usr/bin/python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8001
+
+[Unit]
+Description=Kiraye EQ API (Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/KIRA
+Environment=PYTHONPATH=/var/www/KIRA
+EnvironmentFile=/var/www/KIRA/backend/env
+ExecStart=/bin/sh -c "exec /usr/bin/python3 -m uvicorn backend.main:app --host $${UVICORN_HOST:-127.0.0.1} --port $${UVICORN_PORT:-8001} --workers $${UVICORN_WORKERS:-1}"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

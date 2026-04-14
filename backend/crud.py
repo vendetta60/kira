@@ -3,11 +3,20 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 
 
-def create_user(db: Session, data: schemas.UserCreate) -> models.User:
+def create_user(
+    db: Session,
+    data: schemas.UserCreate,
+    role: str | None = None,
+) -> models.User:
     from .auth import get_password_hash
 
     hashed = get_password_hash(data.password)
-    user = models.User(username=data.username, full_name=data.full_name, password_hash=hashed)
+    user = models.User(
+        username=data.username,
+        full_name=data.full_name,
+        password_hash=hashed,
+        role=role or "admin",
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

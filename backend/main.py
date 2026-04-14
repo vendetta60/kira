@@ -1,29 +1,55 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from . import auth, crud, models, schemas
-from .auth import create_access_token, get_current_active_user, require_admin
+from . import config as app_config
+from .auth import (
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+    get_current_active_user,
+    require_admin,
+)
 from .database import Base, engine, get_db
 
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Rently API")
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from .bootstrap import run_bootstrap
 
+    run_bootstrap()
+    yield
+
+
+_app_kw: dict = {"title": app_config.APP_NAME, "lifespan": lifespan}
+if app_config.ROOT_PATH:
+    _app_kw["root_path"] = app_config.ROOT_PATH
+app = FastAPI(**_app_kw)
+
+_cors_origins, _cors_credentials = app_config.cors_middleware_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+def health():
+    """Load balancer / monitoring üçün."""
+    out: dict = {"status": "ok"}
+    if not app_config.IS_PRODUCTION:
+        out["env"] = app_config.ENV
+    return out
 
 
 @app.post("/auth/login", response_model=schemas.Token)
@@ -38,25 +64,35 @@ def login(
             detail="İstifadəçi adı və ya şifrə yalnışdır",
         )
     access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh = create_refresh_token(user.username)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh,
+    }
+
+
+@app.post("/auth/refresh", response_model=schemas.Token)
+def refresh_token(body: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
+    username = decode_refresh_token(body.refresh_token)
+    user = crud.get_user_by_username(db, username)
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="İstifadəçi tapılmadı və ya deaktivdir",
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    new_refresh = create_refresh_token(user.username)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": new_refresh,
+    }
 
 
 @app.get("/auth/me", response_model=schemas.User)
 def read_me(current_user: models.User = Depends(get_current_active_user)):
     return current_user
-
-
-@app.post("/auth/seed-admin", response_model=schemas.User)
-def seed_admin(db: Session = Depends(get_db)):
-    """
-    İlk dəfə üçün sadə admin istifadəçi yaradır:
-    username=admin, password=admin123
-    """
-    existing = crud.get_user_by_username(db, "admin")
-    if existing:
-        return existing
-    data = schemas.UserCreate(username="admin", full_name="Admin", password="admin123")
-    return crud.create_user(db, data)
 
 
 @app.get("/users", response_model=list[schemas.User])

@@ -11,13 +11,13 @@ interface NavbarProps {
 
 export function Navbar({ onNewDocument }: NavbarProps) {
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-4">
+    <nav className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
             src={smallLogo}
             alt="Kirayə müqavilələri loqosu"
-            className="w-9 h-9 rounded-full border border-blue-100 shadow-sm object-contain bg-white"
+            className="w-9 h-9 rounded-full border border-slate-200 shadow-sm object-contain bg-white"
           />
           <div>
             <h1 className="text-xl font-bold text-gray-900">Sənədlərin Qeydiyyatı</h1>
@@ -26,9 +26,9 @@ export function Navbar({ onNewDocument }: NavbarProps) {
         </div>
         <button
           onClick={onNewDocument}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:from-emerald-500 hover:to-teal-500 transition-all duration-200 border border-emerald-500/30"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-5 h-5" strokeWidth={2.5} />
           Yeni Sənəd
         </button>
       </div>

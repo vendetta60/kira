@@ -1,0 +1,13 @@
+# Layihə kökündən: docker compose up -d --build
+# Əvvəlcə .env faylını kökdə yaradın (backend/.env.example istinad)
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "${API_PORT:-8001}:8001"
+    env_file:
+      - backend/.env
+    restart: unless-stopped

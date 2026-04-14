@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import type { User } from '../lib/api';
+import { roleLabel } from '../lib/roles';
 import { createUser, deleteUserApi, fetchUsers, updateUserApi } from '../lib/api';
 
 interface UserTableProps {
@@ -154,7 +155,7 @@ export function UserTable({ token }: UserTableProps) {
                     {user.full_name || <span className="text-gray-400">-</span>}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900">
-                    {user.role === 'admin' ? 'Admin' : 'İstifadəçi'}
+                    {roleLabel(user.role)}
                   </td>
                   <td className="px-4 py-2 text-sm">
                     <span
